@@ -1,47 +1,40 @@
 from django.http import HttpResponse
 from .models import Tweet
-import tweepy  # Ensure tweepy is imported and configured
-from django.conf import settings
-
-# Setup Tweepy API (make sure you've set keys in your .env and settings)
-auth = tweepy.OAuthHandler(
-    settings.TWITTER_API_KEY,
-    settings.TWITTER_API_SECRET
-)
-auth.set_access_token(
-    settings.TWITTER_ACCESS_TOKEN,
-    settings.TWITTER_ACCESS_SECRET
-)
-api = tweepy.API(auth)
+import snscrape.modules.twitter as sntwitter
 
 
+def fetch_and_save_view(count=100):
+    query = '(vaccines OR vaccine OR vax OR immunization OR immunize OR vaccination OR polio) lang:en geocode:-1.2921,36.8219,100km'
+    tweet_count = 0
+    saved_tweet_ids = []
+
+    for tweet in sntwitter.TwitterSearchScraper(query).get_items():
+        if tweet_count >= count:
+            break
+
+        obj, created = Tweet.objects.get_or_create(
+            tweet_id=str(tweet.id),
+            defaults={
+                'username': tweet.user.username,
+                'content': tweet.content,
+                'created_at': tweet.date,
+                'retweet_count': tweet.retweetCount,
+                'favorite_count': tweet.likeCount,
+                'language': tweet.lang,
+                'geocoordinates': f"{tweet.coordinates}" if tweet.coordinates else None
+            }
+        )
+
+        if created:
+            saved_tweet_ids.append(str(tweet.id))
+            tweet_count += 1
+
+    if saved_tweet_ids:
+        return f"{tweet_count} tweets saved. Tweet IDs:\n" + "\n".join(saved_tweet_ids)
+    else:
+        return "No new tweets were saved."
 
 
-def fetch_and_save_tweets(query="vaccines OR vaccine OR vax OR immunization OR immunize OR vaccination OR polio", count=100):
-    geocode = "-1.2921,36.8219,50km"  # Coordinates for Nairobi, Kenya
-
-    tweets = tweepy.Cursor(api.search_tweets, q=query, lang="en", tweet_mode="extended", geocode=geocode).items(count)
-
-    saved = 0
-    for tweet in tweets:
-        if not Tweet.objects.filter(tweet_id=tweet.id_str).exists():
-            Tweet.objects.create(
-                tweet_id=tweet.id_str,
-                username=tweet.user.screen_name,
-                content=tweet.full_text,
-                created_at=tweet.created_at,
-                tweet_source=tweet.source,
-                retweet_count=tweet.retweet_count,
-                favorite_count=tweet.favorite_count,
-                language=tweet.lang,
-                geocoordinates=tweet.coordinates['coordinates'] if tweet.coordinates else None
-            )
-            saved += 1
-
-    return f"{saved} new tweets saved to the database."
-
-
-# View for calling it from browser or frontend
-def fetch_tweets_view(request):
-    result = fetch_and_save_tweets()
-    return HttpResponse(result)
+def fetch_tweets(request):
+    result = fetch_and_save_view()
+    return HttpResponse(result, content_type="text/plain")
