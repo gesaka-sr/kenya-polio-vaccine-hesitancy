@@ -2,5 +2,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.home, name='home'),  # Example view
+    path('', views.fetch_tweets_view, name='fetch_tweets_view'),  # Example view
 ]

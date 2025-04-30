@@ -11,6 +11,8 @@ class Tweet(models.Model):
     retweet_count = models.IntegerField(default=0)  # Number of retweets
     favorite_count = models.IntegerField(default=0)  # Number of likes (favorites)
     language = models.CharField(max_length=10, null=True, blank=True)  # Language of the tweet
+    geocoordinates = models.JSONField(null=True, blank=True)  # To store coordinates if available
+
 
     def __str__(self):
         return f"{self.username}: {self.content[:50]}"  # Display first 50 characters of the tweet in the admin
