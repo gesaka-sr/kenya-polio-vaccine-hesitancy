@@ -10,35 +10,7 @@ class Tweet(models.Model):
     tweet_source = models.CharField(max_length=255, null=True, blank=True)  # The platform from where the tweet was posted (e.g., Twitter Web App, Twitter for iPhone)
     retweet_count = models.IntegerField(default=0)  # Number of retweets
     favorite_count = models.IntegerField(default=0)  # Number of likes (favorites)
-    language = models
-    
-    
-from .models import Tweet
+    language = models.CharField(max_length=10, null=True, blank=True)  # Language of the tweet
 
-def fetch_and_save_tweets(query="data science", count=100):
-    tweets = tweepy.Cursor(api.search_tweets, q=query, lang="en", tweet_mode="extended").items(count)
-    
-    for tweet in tweets:
-        tweet_id = tweet.id_str
-        username = tweet.user.screen_name
-        content = tweet.full_text
-        created_at = tweet.created_at
-        tweet_source = tweet.source
-        retweet_count = tweet.retweet_count
-        favorite_count = tweet.favorite_count
-        language = tweet.lang
-
-        # Save tweet data to database
-        Tweet.objects.create(
-            tweet_id=tweet_id,
-            username=username,
-            content=content,
-            created_at=created_at,
-            tweet_source=tweet_source,
-            retweet_count=retweet_count,
-            favorite_count=favorite_count,
-            language=language
-        )
-
-    return f"{count} tweets have been successfully saved to the database."
-
+    def __str__(self):
+        return f"{self.username}: {self.content[:50]}"  # Display first 50 characters of the tweet in the admin

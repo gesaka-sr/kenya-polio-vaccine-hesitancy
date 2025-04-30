@@ -1,21 +1,25 @@
 from django.http import HttpResponse
-from .utils import fetch_and_save_tweets  # Import the function
+# from .utils import fetch_and_save_tweets  # Import the function
 import tweepy
-from datetime import datetime
-from django.shortcuts import render
+# from datetime import datetime
+# from django.shortcuts import render
 from .models import Tweet
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Twitter API credentials (replace with your own)
-consumer_key = 'your_consumer_key'
-consumer_secret = 'your_consumer_secret'
-access_token = 'your_access_token'
-access_token_secret = 'your_access_token_secret'
+consumer_key = os.getenv('CONSUMER_KEY')
+consumer_secret = os.getenv('CONSUMER_SECRET')
+access_token = os.getenv('ACCESS_TOKEN')
+access_token_secret = os.getenv('ACCESS_TOKEN_SECRET')
 
 # Set up Tweepy authentication
 auth = tweepy.OAuth1UserHandler(
     consumer_key, consumer_secret, access_token, access_token_secret
 )
 api = tweepy.API(auth)
+
 
 def home(request):
     return HttpResponse("Hello from myapp!")
