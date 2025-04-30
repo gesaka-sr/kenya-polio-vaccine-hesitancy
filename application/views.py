@@ -1,6 +1,4 @@
 from django.http import HttpResponse
-
-
 from .utils import fetch_and_save_tweets  # Import the function
 import tweepy
 from datetime import datetime
