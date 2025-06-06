@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tweet-url-Collector</title>
+    <!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap 5 JS (for modal functionality) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</head>
+<body>
+    <div class="container mt-5 text-center">
+        <h2 class="mb-4">Tweet URL Collector</h2>
+    
+        <!-- Button to open the modal -->
+        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#tweetModal">
+            ➕ Submit Tweet URL
+        </button>
+    
+        <!-- Success messages -->
+        {% for message in messages %}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    
+        <!-- Modal -->
+        <div class="modal fade" id="tweetModal" tabindex="-1" aria-labelledby="tweetModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="tweetModalLabel">Submit Tweet URL</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+    
+                        <div class="modal-body">
+                            {{ form.as_p }}
+
+                        </div>
+    
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Submit</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    
+        <button id="toggleUrlsBtn" class="btn btn-primary mb-3">Show Stored Tweet URLs</button>
+
+        <!-- Stored URLs container, hidden by default -->
+        <div id="storedUrls" class="container" style="display: none;">
+          <h4 class="mt-4 mb-3">Stored Tweet URLs</h4>
+          <div class="row">
+            {% for url in urls %}
+              <div class="col-12 col-lg-6 mb-2">
+                <div class="border rounded p-2 bg-light">
+                  {{ url.url }}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        
+    </div>
+    
+</body>
+</html>
+<style>
+    body {
+        background: #f8f9fa;
+    }
+    .modal-header {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
+<script>
+    const btn = document.getElementById('toggleUrlsBtn');
+    const urlsDiv = document.getElementById('storedUrls');
+    let visible = false;
+  
+    btn.addEventListener('click', () => {
+      visible = !visible;
+      urlsDiv.style.display = visible ? 'block' : 'none';
+      btn.textContent = visible ? 'Hide Stored Tweet URLs' : 'Show Stored Tweet URLs';
+    });
+  </script>
