@@ -8,8 +8,9 @@ class Tweet(models.Model):
     favorite_count = models.IntegerField(default=0)
     language = models.CharField(max_length=10)
     username = models.CharField(max_length=255)
-    # geocoordinates can be optional
+    tweet_source = models.CharField(max_length=255, default="Unknown")
     geocoordinates = models.JSONField(null=True, blank=True)
 
     def __str__(self):
         return self.content[:52]
+

@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 from decouple import config
 
-
+# AAAAAAAAAAAAAAAAAAAAAIjD0wEAAAAAi8sRrS4Z%2BnggPNwVYh8zoHaBJ%2F4%3D9oYk0YVV3RAa2xZ9r9weQ1lfwT6hg13tYwiJYc9fNxHPDeYO20
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -135,3 +135,41 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# tweet_urls = [
+#     "https://x.com/MOH_Kenya/status/1855339720722554962",
+#     "https://x.com/GrandPRKE/status/1855463721838969104",
+#     "https://x.com/MOH_Kenya/status/1841772181358780732",
+#     "https://x.com/ntvkenya/status/1841886549035675707",
+#     "https://x.com/ntvkenya/status/1841892124440092753",
+#     "https://x.com/MOH_Kenya/status/1842070347949945240",
+#     "https://x.com/MOH_Kenya/status/1842443214688547177",
+#     "https://x.com/MOH_Kenya/status/1842456497390776361",
+#     "https://x.com/MOH_Kenya/status/1844399101762298049",
+#     "https://x.com/MOH_Kenya/status/1847313709518999739",
+#     "https://x.com/MOH_Kenya/status/1854976082556096979",
+#     "https://x.com/MOH_Kenya/status/1855188210831212824",
+#     "https://x.com/MOH_Kenya/status/1855290251310403594",
+#     "https://x.com/MOH_Kenya/status/1855297207626264635",
+#     "https://x.com/MOH_Kenya/status/1855309785828082134",
+#     "https://x.com/MOH_Kenya/status/1855320477654528254",
+#     "https://x.com/MOH_Kenya/status/1855327135587573863",
+#     "https://x.com/Lasterbosire/status/1855327708492038499",
+#     "https://x.com/MOH_Kenya/status/1855337856824475693",
+#     "https://x.com/MOH_Kenya/status/1855343194466394284",
+#     "https://x.com/MOH_Kenya/status/1855552463480193368",
+#     "https://x.com/MOH_Kenya/status/1855560071960244689",
+#     "https://x.com/MOH_Kenya/status/1855569000031191106",
+#     "https://x.com/TurkanaCountyKE/status/1855572816877285376",
+#     "https://x.com/MOH_Kenya/status/1855627239011885099",
+#     "https://x.com/WHOAFRO/status/1855624457177477150",
+#     "https://x.com/MOH_Kenya/status/1855939598775382041",
+#     "https://x.com/MOH_Kenya/status/1855972319304286252",
+#     "https://x.com/UNICEFKenya/status/1855960738604442019",
+#     "https://x.com/MOH_Kenya/status/1856266615425310924",
+#     "https://x.com/MOH_Kenya/status/1856653253712257234",
+#     "https://x.com/MOH_Kenya/status/1856902944207106461",
+#     "https://x.com/MOH_Kenya/status/1856897251806716192",
+#     "https://x.com/MOH_Kenya/status/1856281568874246455",
+# ]
