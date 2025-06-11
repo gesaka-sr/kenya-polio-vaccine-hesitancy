@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
+    {% load form_tags %}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -38,23 +40,39 @@
                             <h5 class="modal-title" id="tweetModalLabel">Submit Tweet URL</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-    
+                    
                         <div class="modal-body">
-                            {{ form.as_p }}
-
+                            <div class="mb-3">
+                                <label for="{{ form.url.id_for_label }}" class="form-label">Tweet URL</label>
+                                {{ form.url|add_class:"form-control" }}
+                                {% if form.url.errors %}
+                                    <div class="text-danger small">{{ form.url.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                                {{ form.category|add_class:"form-select" }}
+                                {% if form.category.errors %}
+                                    <div class="text-danger small">{{ form.category.errors }}</div>
+                                {% endif %}
+                                {% if form.category.help_text %}
+                                    <div class="form-text">{{ form.category.help_text }}</div>
+                                {% endif %}
+                            </div>
                         </div>
-    
+                    
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-success">Submit</button>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         </div>
                     </form>
+                    
                 </div>
             </div>
         </div>
     
         <button id="toggleUrlsBtn" class="btn btn-primary mb-3">Show Stored Tweet URLs</button>
-
+        <a href="{% url 'fetch_tweets_view' %}" class="btn btn-warning mb-3 ms-2">🚀 Proceed</a>
         <!-- Stored URLs container, hidden by default -->
         <div id="storedUrls" class="container" style="display: none;">
           <h4 class="mt-4 mb-3">Stored Tweet URLs</h4>

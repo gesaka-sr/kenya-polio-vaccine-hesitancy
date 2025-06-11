@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Download Sentiment Files</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            padding: 2rem;
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            text-align: center;
+        }
+        .file-entry {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .file-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .btn-download {
+            margin: 0.25rem;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="mb-4">Download Sentiment Analysis Files</h2>
+
+        {% if sentiment_files %}
+            {% for file in sentiment_files %}
+                <div class="file-entry">
+                    <div class="file-title">{{ file.name|capfirst }} Category</div>
+                    {% if file.csv_url %}
+                        <a href="{{ file.csv_url }}" download class="btn btn-outline-primary btn-download">
+                            📥 CSV File
+                        </a>
+                    {% endif %}
+                    {% if file.pdf_url %}
+                        <a href="{{ file.pdf_url }}" download class="btn btn-outline-success btn-download">
+                            📄 PDF File
+                        </a>
+                    {% endif %}
+                    {% if file.html_url %}
+                        <a href="{{ file.html_url }}" target="_blank" class="btn btn-outline-secondary btn-download">
+                            🌐 View HTML
+                        </a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-warning">
+                No sentiment analysis files available for download yet.
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
