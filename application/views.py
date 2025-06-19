@@ -1,29 +1,29 @@
 import base64
-import httpx
-import time
-import json
-import csv
-import os
-import asyncio
 import requests
+import time
+import csv
+import json
+import os
 from pathlib import Path
+from django.http import HttpResponse
 from django.conf import settings
 from django.shortcuts import render, redirect
-from .forms import TweetURLForm
 from django.contrib import messages
-from collections import defaultdict
-from .models import TweetURL, Tweet, CATEGORY_CHOICES
-from .sentiment_analysis import process_all_csvs
-import logging
+from .models import Tweet, TweetURL
+from .forms import TweetURLForm
 
-logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 5
+# Extract tweet ID from URL
+def extract_tweet_ids_with_urls(urls):
+    id_url_map = {}
+    for url in urls:
+        tweet_id = url.rstrip('/').split('/')[-1]
+        if tweet_id.isdigit():
+            id_url_map[tweet_id] = url
+    return id_url_map
 
-logger = logging.getLogger(__name__)
 
-# ---------------------- Utility Functions ----------------------
-
+# Submit Tweet URL form
 def submit_tweet_url(request):
     if request.method == 'POST':
         form = TweetURLForm(request.POST)
@@ -42,6 +42,7 @@ def submit_tweet_url(request):
     return render(request, 'submit_url.html', {'form': form, 'urls': urls})
 
 
+# Generate bearer token
 def generate_bearer_token():
     key_secret = f"{settings.TWITTER_API_KEY}:{settings.TWITTER_API_SECRET}".encode('ascii')
     b64_encoded_key = base64.b64encode(key_secret).decode('ascii')
@@ -50,7 +51,7 @@ def generate_bearer_token():
         "https://api.twitter.com/oauth2/token",
         headers={
             "Authorization": f"Basic {b64_encoded_key}",
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
         },
         data={"grant_type": "client_credentials"}
     )
@@ -61,124 +62,129 @@ def generate_bearer_token():
     return response.json()["access_token"]
 
 
+# Utility for batching tweet IDs
 def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
 
-async def fetch_with_retry(client, url, params, headers, label=""):
-    delay = 60
-    for attempt in range(1, MAX_RETRIES + 1):
-        response = await client.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 429:
-            print(f"⚠️ Rate limit hit while fetching {label}. Sleeping for {delay} seconds (retry {attempt}/{MAX_RETRIES})")
-            await asyncio.sleep(delay)
-            delay *= 2
+# Fetch tweet data from IDs
+def fetch_tweets(batch_ids, bearer_token):
+    url = "https://api.twitter.com/2/tweets"
+    headers = {
+        "Authorization": f"Bearer {bearer_token}"
+    }
+    params = {
+        "ids": ",".join(batch_ids),
+        "tweet.fields": "author_id,created_at,public_metrics"
+    }
+
+    while True:
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 429:
+            print("⏳ Rate limit hit. Sleeping for 60 seconds...")
+            time.sleep(60)
+            continue
+        response.raise_for_status()
+        break
+
+    return response.json().get("data", [])
+
+
+# Fetch replies to a tweet using conversation_id
+def fetch_replies(conversation_id, bearer_token):
+    replies = []
+    url = "https://api.twitter.com/2/tweets/search/recent"
+    headers = {
+        "Authorization": f"Bearer {bearer_token}"
+    }
+    params = {
+        "query": f"conversation_id:{conversation_id} is:reply",
+        "tweet.fields": "author_id,created_at,public_metrics,conversation_id",
+        "max_results": 100
+    }
+
+    while True:
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 429:
+            print("Rate limit reached while fetching replies. Sleeping for 60 seconds.")
+            time.sleep(60)
+            continue
+        response.raise_for_status()
+        data = response.json()
+        if "data" in data:
+            replies.extend(data["data"])
+        if "meta" in data and "next_token" in data["meta"]:
+            params["next_token"] = data["meta"]["next_token"]
         else:
-            response.raise_for_status()
-    raise Exception(f"Failed to fetch {label} after {MAX_RETRIES} retries.")
+            break
+    return replies
 
 
-async def fetch_tweets_async(batch_ids, bearer_token):
-    async with httpx.AsyncClient() as client:
-        url = "https://api.twitter.com/2/tweets"
-        params = {
-            "ids": ",".join(batch_ids),
-            "tweet.fields": "author_id,created_at,public_metrics,conversation_id,text"
-        }
-        headers = {"Authorization": f"Bearer {bearer_token}"}
-        result = await fetch_with_retry(client, url, params, headers, label="tweets")
-        return result.get("data", [])
-
-
-async def fetch_replies_async(conversation_id, bearer_token):
-    async with httpx.AsyncClient() as client:
-        url = "https://api.twitter.com/2/tweets/search/recent"
-        headers = {"Authorization": f"Bearer {bearer_token}"}
-        params = {
-            "query": f"conversation_id:{conversation_id}",
-            "tweet.fields": "author_id,created_at,public_metrics,conversation_id,in_reply_to_user_id,text",
-            "max_results": 100
-        }
-        result = await fetch_with_retry(client, url, params, headers, label="replies")
-        return result.get("data", [])
-
-
-# ---------------------- View ----------------------
-
+# Main view to fetch tweets + replies and export
 def fetch_tweets_view(request):
-    bearer_token = generate_bearer_token()
-    tweet_objs = TweetURL.objects.all()
-    tweet_ids = [url.url.rstrip("/").split("/")[-1] for url in tweet_objs]
-    tweet_id_to_obj = {url.url.rstrip("/").split("/")[-1]: url for url in tweet_objs}
-    tweet_id_to_category = {tid: obj.category for tid, obj in tweet_id_to_obj.items()}
-    CATEGORY_KEYS = [choice[0] for choice in CATEGORY_CHOICES]
-    all_tweets_by_category = defaultdict(list)
+    try:
+        bearer_token = generate_bearer_token()
+        all_tweets = []
 
-    cached_ids = set(Tweet.objects.filter(tweet_id__in=tweet_ids).values_list('tweet_id', flat=True))
-    ids_to_fetch = [tid for tid in tweet_ids if tid not in cached_ids]
+        tweet_urls = TweetURL.objects.values_list('url', flat=True)
+        tweet_ids = [url.rstrip("/").split("/")[-1] for url in tweet_urls if url.rstrip("/").split("/")[-1].isdigit()]
 
-    async def fetch_all():
+        cached_ids = set(Tweet.objects.filter(tweet_id__in=tweet_ids).values_list('tweet_id', flat=True))
+        ids_to_fetch = [tid for tid in tweet_ids if tid not in cached_ids]
+
+        print(f"Fetching {len(ids_to_fetch)} new tweets out of {len(tweet_ids)} total.")
+
         for batch in chunks(ids_to_fetch, 100):
-            tweets = await fetch_tweets_async(batch, bearer_token)
-
+            tweets = fetch_tweets(batch, bearer_token)
             for t in tweets:
-                tweet_id = t["id"]
-                parent_url_obj = tweet_id_to_obj.get(tweet_id)
-
                 data = {
-                    "tweet_id": tweet_id,
+                    "tweet_id": t["id"],
                     "author_id": t["author_id"],
-                    "username": "unknown",
-                    "language": "unknown",
-                    "text": t["text"],
                     "created_at": t["created_at"],
+                    "text": t["text"],
                     "retweet_count": t["public_metrics"]["retweet_count"],
                     "reply_count": t["public_metrics"]["reply_count"],
                     "like_count": t["public_metrics"]["like_count"],
                     "quote_count": t["public_metrics"]["quote_count"],
-                    "favorite_count": None,
-                    "is_reply": False,
-                    "parent_url": parent_url_obj
+                    "is_reply": False
                 }
 
-                Tweet.objects.update_or_create(tweet_id=tweet_id, defaults=data)
+                Tweet.objects.update_or_create(
+                    tweet_id=data["tweet_id"],
+                    defaults=data
+                )
+                all_tweets.append(data)
+                print(f"✅ Saved Tweet {t['id']}")
 
-                category = parent_url_obj.category if parent_url_obj else None
-                if category in CATEGORY_KEYS:
-                    all_tweets_by_category[category].append(data)
-
-                replies = await fetch_replies_async(t["conversation_id"], bearer_token)
+                # Fetch and save replies
+                replies = fetch_replies(t["id"], bearer_token)
                 for reply in replies:
                     reply_data = {
                         "tweet_id": reply["id"],
                         "author_id": reply["author_id"],
-                        "username": "unknown",
-                        "language": "unknown",
-                        "text": reply["text"],
                         "created_at": reply["created_at"],
+                        "text": reply["text"],
                         "retweet_count": reply["public_metrics"]["retweet_count"],
                         "reply_count": reply["public_metrics"]["reply_count"],
                         "like_count": reply["public_metrics"]["like_count"],
                         "quote_count": reply["public_metrics"]["quote_count"],
-                        "favorite_count": None,
-                        "is_reply": True,
-                        "parent_url": parent_url_obj
+                        "is_reply": True
                     }
-                    Tweet.objects.update_or_create(tweet_id=reply_data["tweet_id"], defaults=reply_data)
+                    print(f"↩️ Reply fetched: {reply_data['text']} (ID: {reply_data['tweet_id']})")
+                    Tweet.objects.update_or_create(
+                        tweet_id=reply_data["tweet_id"],
+                        defaults=reply_data
+                    )
+                    all_tweets.append(reply_data)
+                    print(f"💬 Saved Reply {reply['id']} to Tweet {t['id']}")
 
-                    if category in CATEGORY_KEYS:
-                        all_tweets_by_category[category].append(reply_data)
+                time.sleep(2)  # Delay between tweets to avoid rate limits
 
-    asyncio.run(fetch_all())
-
-    # Include cached tweets
-    for ct in Tweet.objects.filter(tweet_id__in=cached_ids):
-        category = tweet_id_to_category.get(ct.tweet_id)
-        if category in CATEGORY_KEYS:
-            all_tweets_by_category[category].append({
+        # Add cached tweets to export
+        cached_tweets = Tweet.objects.filter(tweet_id__in=cached_ids)
+        for ct in cached_tweets:
+            all_tweets.append({
                 "tweet_id": ct.tweet_id,
                 "author_id": ct.author_id,
                 "created_at": ct.created_at.isoformat(),
@@ -187,39 +193,34 @@ def fetch_tweets_view(request):
                 "reply_count": ct.reply_count,
                 "like_count": ct.like_count,
                 "quote_count": ct.quote_count,
-                "parent_tweet": ct.parent_tweet,
                 "is_reply": ct.is_reply
             })
 
-    # Output files
-    output_dir = Path(settings.MEDIA_ROOT)
-    output_dir.mkdir(parents=True, exist_ok=True)
+        # Save JSON and CSV
+        output_dir = Path(settings.MEDIA_ROOT)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    file_links = {}
-    for category in CATEGORY_KEYS:
-        tweets = all_tweets_by_category.get(category, [])
-        if not tweets:
-            continue
-        json_filename = f"{category}_tweets.json"
-        csv_filename = f"{category}_tweets.csv"
+        json_filename = "tweets_output.json"
+        csv_filename = "tweets_output.csv"
         json_path = output_dir / json_filename
         csv_path = output_dir / csv_filename
 
         with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(tweets, f, ensure_ascii=False, indent=2)
+            json.dump(all_tweets, f, ensure_ascii=False, indent=2)
 
         with open(csv_path, "w", newline='', encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=tweets[0].keys())
+            writer = csv.DictWriter(f, fieldnames=all_tweets[0].keys())
             writer.writeheader()
-            writer.writerows(tweets)
+            writer.writerows(all_tweets)
 
-        file_links[category] = {
-            "json_url": os.path.join(settings.MEDIA_URL, json_filename),
-            "csv_url": os.path.join(settings.MEDIA_URL, csv_filename),
-            "count": len(tweets)
-        }
+        json_url = os.path.join(settings.MEDIA_URL, json_filename)
+        csv_url = os.path.join(settings.MEDIA_URL, csv_filename)
 
-    return render(request, "download_links.html", {
-        "file_links": file_links,
-        "category_keys": CATEGORY_KEYS
-    })
+        return render(request, "download_links.html", {
+            "json_url": json_url,
+            "csv_url": csv_url,
+            "count": len(all_tweets)
+        })
+
+    except Exception as e:
+        return HttpResponse(f"Error: {e}", status=500)
