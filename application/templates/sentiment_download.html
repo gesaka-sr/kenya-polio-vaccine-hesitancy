@@ -13,7 +13,6 @@
         .container {
             max-width: 700px;
             margin: auto;
-            text-align: center;
         }
         .file-entry {
             background: white;
@@ -35,32 +34,33 @@
 </head>
 <body>
     <div class="container">
-        <h2 class="mb-4">Download Sentiment Analysis Files</h2>
+        <h2 class="mb-4 text-center">📥 Download Sentiment Analysis Reports</h2>
 
         {% if sentiment_files %}
-            {% for file in sentiment_files %}
+            {% for category, formats in sentiment_files.items %}
                 <div class="file-entry">
-                    <div class="file-title">{{ file.name|capfirst }} Category</div>
-                    {% if file.csv_url %}
-                        <a href="{{ file.csv_url }}" download class="btn btn-outline-primary btn-download">
-                            📥 CSV File
+                    <div class="file-title">{{ category|capfirst }} Category</div>
+
+                    {% if formats.csv %}
+                        <a href="{{ formats.csv }}" download class="btn btn-outline-primary btn-download">
+                            📊 CSV File
                         </a>
                     {% endif %}
-                    {% if file.pdf_url %}
-                        <a href="{{ file.pdf_url }}" download class="btn btn-outline-success btn-download">
+                    {% if formats.pdf %}
+                        <a href="{{ formats.pdf }}" download class="btn btn-outline-success btn-download">
                             📄 PDF File
                         </a>
                     {% endif %}
-                    {% if file.html_url %}
-                        <a href="{{ file.html_url }}" target="_blank" class="btn btn-outline-secondary btn-download">
+                    {% if formats.html %}
+                        <a href="{{ formats.html }}" target="_blank" class="btn btn-outline-secondary btn-download">
                             🌐 View HTML
                         </a>
                     {% endif %}
                 </div>
             {% endfor %}
         {% else %}
-            <div class="alert alert-warning">
-                No sentiment analysis files available for download yet.
+            <div class="alert alert-warning text-center">
+                🚫 No sentiment analysis files available for download yet.
             </div>
         {% endif %}
     </div>

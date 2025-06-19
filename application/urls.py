@@ -6,6 +6,9 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('tweets', views.fetch_tweets_view, name='fetch_tweets_view'),
     path('', views.submit_tweet_url, name='submit_tweet_url'),
-    path('sentiment', views.sentiment_download_view, name='sentiment_download_view'),
+    # path('sentiment/', views.sentiment_download_view, name='sentiment_download'),
     # path("api/tweets/", views.fetch_tweets, name="fetch_tweets")# Example view
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+
